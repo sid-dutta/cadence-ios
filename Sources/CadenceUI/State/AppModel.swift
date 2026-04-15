@@ -35,6 +35,13 @@ public final class AppModel {
         case failed(String)
     }
 
+    public enum HealthStatus: Equatable, Sendable {
+        case idle
+        case working
+        case imported(runs: Int, at: Date)
+        case failed(String)
+    }
+
     // MARK: State
 
     /// Includes tombstones; use `visibleWorkouts` for display.
@@ -46,6 +53,11 @@ public final class AppModel {
     public private(set) var syncStatus: SyncStatus = .idle
     public private(set) var storageError: String?
 
+    /// Daily metrics cached from Apple Health, oldest first.
+    public private(set) var healthDays: [HealthDay] = []
+    public private(set) var lastHealthImportAt: Date?
+    public private(set) var healthStatus: HealthStatus = .idle
+
     public var settings: UserSettings {
         didSet { settingsStore.save(settings) }
     }
@@ -55,13 +67,15 @@ public final class AppModel {
     private let repository: DataRepository
     private let settingsStore: SettingsStore
     private let tokenStore: TokenStore
+    private let health: HealthService
 
     // MARK: Init
 
-    public init(repository: DataRepository, settingsStore: SettingsStore, tokenStore: TokenStore) {
+    public init(repository: DataRepository, settingsStore: SettingsStore, tokenStore: TokenStore, health: HealthService) {
         self.repository = repository
         self.settingsStore = settingsStore
         self.tokenStore = tokenStore
+        self.health = health
         self.settings = settingsStore.load()
         self.isSignedIn = tokenStore.read() != nil
 
@@ -71,12 +85,14 @@ public final class AppModel {
             runs = snapshot.runs
             activeWorkout = snapshot.activeWorkout
             lastSyncedAt = snapshot.lastSyncedAt
+            healthDays = snapshot.healthDays
+            lastHealthImportAt = snapshot.lastHealthImportAt
         } catch {
             storageError = "Couldn't read saved data: \(error.localizedDescription)"
         }
     }
 
-    /// Production wiring: JSON file + UserDefaults + Keychain.
+    /// Production wiring: JSON file + UserDefaults + Keychain + HealthKit.
     public static func live() -> AppModel {
         let repository: DataRepository
         do {
@@ -84,16 +100,35 @@ public final class AppModel {
         } catch {
             repository = InMemoryRepository()
         }
-        return AppModel(repository: repository, settingsStore: UserDefaultsSettingsStore(), tokenStore: KeychainTokenStore())
+        let health: HealthService
+        #if canImport(HealthKit)
+        health = HealthKitService()
+        #else
+        health = UnavailableHealthService()
+        #endif
+        return AppModel(
+            repository: repository,
+            settingsStore: UserDefaultsSettingsStore(),
+            tokenStore: KeychainTokenStore(),
+            health: health
+        )
     }
 
     /// In-memory model pre-loaded with sample history, for previews and UI tests.
-    public static func preview(weeks: Int = 8, signedIn: Bool = false) -> AppModel {
-        AppModel(
+    public static func preview(weeks: Int = 8, signedIn: Bool = false, healthConnected: Bool = true) -> AppModel {
+        let model = AppModel(
             repository: InMemoryRepository(snapshot: SampleData.snapshot(weeks: weeks)),
-            settingsStore: InMemorySettingsStore(settings: UserSettings(accountEmail: signedIn ? "demo@cadence.app" : nil)),
-            tokenStore: InMemoryTokenStore(token: signedIn ? "preview-token" : nil)
+            settingsStore: InMemorySettingsStore(settings: UserSettings(
+                accountEmail: signedIn ? "demo@cadence.app" : nil,
+                healthConnected: healthConnected
+            )),
+            tokenStore: InMemoryTokenStore(token: signedIn ? "preview-token" : nil),
+            health: PreviewHealthService()
         )
+        if healthConnected {
+            Task { await model.importFromHealth() }
+        }
+        return model
     }
 
     // MARK: Derived
@@ -129,6 +164,18 @@ public final class AppModel {
 
     public func workout(id: UUID) -> Workout? {
         workouts.first { $0.id == id }
+    }
+
+    public var isHealthAvailable: Bool { health.isAvailable }
+
+    public var isHealthConnected: Bool { health.isAvailable && settings.healthConnected }
+
+    public var todayHealth: HealthDay? {
+        HealthStats.day(Date(), in: healthDays)
+    }
+
+    public func healthSeries(days: Int) -> [HealthDay] {
+        HealthStats.series(healthDays, lastDays: days)
     }
 
     public func run(id: UUID) -> Run? {
@@ -243,6 +290,7 @@ public final class AppModel {
         workouts.append(workout)
         activeWorkout = nil
         persist()
+        exportWorkoutToHealth(id: workout.id)
     }
 
     public func discardActiveWorkout() {
@@ -271,12 +319,102 @@ public final class AppModel {
     public func logRun(_ run: Run) {
         var run = run
         run.updatedAt = Date()
+        let isNew: Bool
         if let index = runs.firstIndex(where: { $0.id == run.id }) {
+            // Keep the Health link across edits.
+            run.healthKitID = run.healthKitID ?? runs[index].healthKitID
             runs[index] = run
+            isNew = false
         } else {
             runs.append(run)
+            isNew = true
         }
         persist()
+        if isNew {
+            exportRunToHealth(id: run.id)
+        }
+    }
+
+    // MARK: Apple Health
+
+    /// Shows the permission sheet, then pulls everything in.
+    public func connectHealth() async {
+        guard health.isAvailable else { return }
+        healthStatus = .working
+        do {
+            try await health.requestAuthorization()
+            settings.healthConnected = true
+            await importFromHealth()
+        } catch {
+            healthStatus = .failed(error.localizedDescription)
+        }
+    }
+
+    public func disconnectHealth() {
+        settings.healthConnected = false
+        healthDays = []
+        lastHealthImportAt = nil
+        healthStatus = .idle
+        persist()
+    }
+
+    /// Pulls new runs and the last 90 days of daily metrics. Safe to call on
+    /// every launch; imports are idempotent.
+    public func importFromHealth() async {
+        guard isHealthConnected, healthStatus != .working else { return }
+        healthStatus = .working
+        do {
+            // Look back a day past the last import so a run that finished
+            // while we were importing isn't missed.
+            let since = lastHealthImportAt.map { $0.addingTimeInterval(-86_400) }
+            async let fetchedRuns = health.fetchRuns(since: since)
+            async let fetchedDays = health.fetchDailyMetrics(days: 90)
+            let (newRuns, days) = try await (fetchedRuns, fetchedDays)
+
+            let merged = HealthImport.merge(imported: newRuns, into: runs)
+            runs = merged.runs
+            healthDays = HealthImport.mergeDays(fetched: days, into: healthDays)
+            let now = Date()
+            lastHealthImportAt = now
+            healthStatus = .imported(runs: merged.added, at: now)
+            persist()
+        } catch {
+            healthStatus = .failed(error.localizedDescription)
+        }
+    }
+
+    private var shouldExportToHealth: Bool {
+        isHealthConnected && settings.healthExportEnabled
+    }
+
+    private func exportWorkoutToHealth(id: UUID) {
+        guard shouldExportToHealth, let workout = workout(id: id), workout.healthKitID == nil else { return }
+        Task {
+            do {
+                let hkID = try await health.saveWorkout(workout)
+                if let index = workouts.firstIndex(where: { $0.id == id }) {
+                    workouts[index].healthKitID = hkID
+                    persist()
+                }
+            } catch {
+                healthStatus = .failed(error.localizedDescription)
+            }
+        }
+    }
+
+    private func exportRunToHealth(id: UUID) {
+        guard shouldExportToHealth, let run = run(id: id), run.healthKitID == nil else { return }
+        Task {
+            do {
+                let hkID = try await health.saveRun(run)
+                if let index = runs.firstIndex(where: { $0.id == id }) {
+                    runs[index].healthKitID = hkID
+                    persist()
+                }
+            } catch {
+                healthStatus = .failed(error.localizedDescription)
+            }
+        }
     }
 
     public func deleteRun(id: UUID) {
@@ -355,6 +493,8 @@ public final class AppModel {
         runs = []
         activeWorkout = nil
         lastSyncedAt = nil
+        healthDays = []
+        lastHealthImportAt = nil
         persist()
     }
 
@@ -369,7 +509,14 @@ public final class AppModel {
     // MARK: Persistence
 
     private var snapshot: DataSnapshot {
-        DataSnapshot(workouts: workouts, runs: runs, activeWorkout: activeWorkout, lastSyncedAt: lastSyncedAt)
+        DataSnapshot(
+            workouts: workouts,
+            runs: runs,
+            activeWorkout: activeWorkout,
+            lastSyncedAt: lastSyncedAt,
+            healthDays: healthDays,
+            lastHealthImportAt: lastHealthImportAt
+        )
     }
 
     private func persist() {

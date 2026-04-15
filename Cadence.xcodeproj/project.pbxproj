@@ -15,6 +15,7 @@
 /* Begin PBXFileReference section */
 		258BC29D8CF3A8AB4A8FD9A1 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		2747B5C0BD75EFECA1D2569B /* Cadence.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Cadence.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4DA7266B0399DE1A30DF12AE /* Cadence.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Cadence.entitlements; sourceTree = "<group>"; };
 		53422462E914EE71A99506E6 /* CadenceApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CadenceApp.swift; sourceTree = "<group>"; };
 		B25A1AC9D81B3AB522431D75 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		CA7364F38680E5FF26DD14ED /* cadence-ios */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "cadence-ios"; path = .; sourceTree = SOURCE_ROOT; };
@@ -36,6 +37,7 @@
 			isa = PBXGroup;
 			children = (
 				B25A1AC9D81B3AB522431D75 /* Assets.xcassets */,
+				4DA7266B0399DE1A30DF12AE /* Cadence.entitlements */,
 				53422462E914EE71A99506E6 /* CadenceApp.swift */,
 				258BC29D8CF3A8AB4A8FD9A1 /* Info.plist */,
 			);
@@ -163,6 +165,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = App/Cadence/Cadence.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 7Z62JKF2LJ;
@@ -182,6 +185,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = App/Cadence/Cadence.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 7Z62JKF2LJ;

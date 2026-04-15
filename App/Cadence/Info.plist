@@ -27,6 +27,10 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Cadence reads your steps, activity, heart rate, weight and runs from Health to show them alongside your workouts.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Cadence saves the workouts and runs you log so they count toward your Activity rings.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchScreen</key>

@@ -57,7 +57,8 @@ public struct CadenceRootView: View {
                 .environment(model)
         }
         .task {
-            // Refresh silently on launch when signed in; failures surface in Settings.
+            // Refresh silently on launch; failures surface in Settings.
+            await model.importFromHealth()
             await model.sync()
         }
     }

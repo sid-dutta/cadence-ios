@@ -52,6 +52,40 @@ struct SettingsView: View {
                 Text(syncFooter)
             }
 
+            if model.isHealthAvailable {
+                Section {
+                    if model.isHealthConnected {
+                        Toggle("Save Workouts to Health", isOn: $model.settings.healthExportEnabled)
+                        Button {
+                            Task { await model.importFromHealth() }
+                        } label: {
+                            HStack {
+                                Label("Import from Health", systemImage: "arrow.down.heart")
+                                Spacer()
+                                if model.healthStatus == .working {
+                                    ProgressView()
+                                        .controlSize(.small)
+                                }
+                            }
+                        }
+                        .disabled(model.healthStatus == .working)
+                        Button("Disconnect", role: .destructive) {
+                            model.disconnectHealth()
+                        }
+                    } else {
+                        Button {
+                            Task { await model.connectHealth() }
+                        } label: {
+                            Label("Connect Apple Health", systemImage: "heart.text.square")
+                        }
+                    }
+                } header: {
+                    Text("Apple Health")
+                } footer: {
+                    Text(healthFooter)
+                }
+            }
+
             Section("Data") {
                 Button {
                     exportURL = try? model.exportFileURL()
@@ -97,6 +131,26 @@ struct SettingsView: View {
             Button("Erase", role: .destructive) { model.eraseAllData() }
         } message: {
             Text("Workouts and runs on this device will be removed. Synced copies on the server are not affected.")
+        }
+    }
+
+    private var healthFooter: String {
+        switch model.healthStatus {
+        case .working:
+            return "Importing…"
+        case .failed(let message):
+            return message
+        case .imported(let runs, let date):
+            let when = date.formatted(.relative(presentation: .named))
+            return runs == 1 ? "Imported 1 run \(when)." : "Imported \(runs) runs \(when)."
+        case .idle:
+            if model.isHealthConnected {
+                if let last = model.lastHealthImportAt {
+                    return "Runs recorded by Apple Watch and other apps are imported automatically. Last import \(last.formatted(.relative(presentation: .named)))."
+                }
+                return "Runs recorded by Apple Watch and other apps are imported automatically."
+            }
+            return "Show steps, activity, heart rate and weight from Health, import runs from your Watch, and count Cadence workouts toward your rings."
         }
     }
 

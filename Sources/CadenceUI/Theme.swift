@@ -15,6 +15,8 @@ public extension Color {
     static let cadenceStrength = Color(red: 0.36, green: 0.42, blue: 0.95)
     /// Running data.
     static let cadenceRunning = Color(red: 0.13, green: 0.72, blue: 0.62)
+    /// Daily activity from Apple Health (steps, energy, exercise).
+    static let cadenceActivity = Color(red: 0.93, green: 0.27, blue: 0.42)
 
     static var cardBackground: Color {
         #if canImport(UIKit)

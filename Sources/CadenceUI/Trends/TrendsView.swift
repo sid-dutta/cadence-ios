@@ -9,7 +9,7 @@ struct TrendsView: View {
     @State private var weeks = 8
 
     enum Mode: String, CaseIterable, Identifiable {
-        case strength = "Strength", running = "Running"
+        case strength = "Strength", running = "Running", activity = "Activity"
         var id: String { rawValue }
     }
 
@@ -24,6 +24,7 @@ struct TrendsView: View {
                 switch mode {
                 case .strength: strength
                 case .running: running
+                case .activity: activity
                 }
             }
             .padding()
@@ -243,6 +244,103 @@ struct TrendsView: View {
                 symbol: "sum",
                 tint: .cadenceRunning
             )
+        }
+    }
+
+    // MARK: Activity (Apple Health)
+
+    private var activityDays: [HealthDay] {
+        model.healthSeries(days: min(weeks * 7, 90))
+    }
+
+    @ViewBuilder
+    private var activity: some View {
+        if !model.isHealthAvailable {
+            EmptyStateView(symbol: "heart.slash", title: "Health Unavailable", message: "Apple Health isn't available on this device.")
+                .card()
+        } else if !model.isHealthConnected {
+            EmptyStateView(
+                symbol: "heart.text.square",
+                title: "Connect Apple Health",
+                message: "See your steps, active energy, exercise minutes, resting heart rate and weight next to your workouts.",
+                actionTitle: "Connect"
+            ) {
+                Task { await model.connectHealth() }
+            }
+            .card()
+        } else if activityDays.allSatisfy(\.isEmpty) {
+            EmptyStateView(symbol: "heart.text.square", title: "No Health Data Yet", message: "Nothing has been recorded for this period.")
+                .card()
+        } else {
+            let days = activityDays
+            HStack(spacing: 10) {
+                StatCard(
+                    title: "Avg Steps",
+                    value: HealthStats.averageSteps(days).formatted(),
+                    caption: "per day",
+                    symbol: "figure.walk",
+                    tint: .cadenceActivity
+                )
+                if let hr = HealthStats.averageRestingHeartRate(days) {
+                    StatCard(title: "Resting HR", value: "\(Int(hr.rounded()))", caption: "bpm", symbol: "heart.fill", tint: .cadenceActivity)
+                }
+                if let kg = HealthStats.latestBodyMassKg(days) {
+                    StatCard(title: "Weight", value: Formatters.weight(kg: kg, unit: weightUnit), caption: "latest", symbol: "scalemass", tint: .cadenceActivity)
+                }
+            }
+
+            chartCard("Steps", subtitle: "\(HealthStats.totalSteps(days).formatted()) total") {
+                Chart(days) { day in
+                    BarMark(
+                        x: .value("Day", day.date, unit: .day),
+                        y: .value("Steps", day.steps ?? 0)
+                    )
+                    .foregroundStyle(Color.cadenceActivity.gradient)
+                    .cornerRadius(3)
+                }
+                .chartXAxis {
+                    AxisMarks(values: .stride(by: .day, count: max(1, days.count / 6))) { _ in
+                        AxisGridLine()
+                        AxisValueLabel(format: .dateTime.month(.abbreviated).day())
+                    }
+                }
+            }
+
+            chartCard("Exercise Minutes", subtitle: "\(Int(HealthStats.totalExerciseMinutes(days).rounded())) min total") {
+                Chart(days) { day in
+                    BarMark(
+                        x: .value("Day", day.date, unit: .day),
+                        y: .value("Minutes", day.exerciseMinutes ?? 0)
+                    )
+                    .foregroundStyle(Color.cadenceActivity.gradient)
+                    .cornerRadius(3)
+                }
+                .chartXAxis {
+                    AxisMarks(values: .stride(by: .day, count: max(1, days.count / 6))) { _ in
+                        AxisGridLine()
+                        AxisValueLabel(format: .dateTime.month(.abbreviated).day())
+                    }
+                }
+                .chartYAxisLabel("min")
+            }
+
+            chartCard("Active Energy", subtitle: "\(Int(HealthStats.totalActiveEnergy(days).rounded())) kcal total") {
+                Chart(days) { day in
+                    LineMark(
+                        x: .value("Day", day.date, unit: .day),
+                        y: .value("kcal", day.activeEnergyKcal ?? 0)
+                    )
+                    .interpolationMethod(.monotone)
+                    .foregroundStyle(Color.cadenceActivity)
+                    AreaMark(
+                        x: .value("Day", day.date, unit: .day),
+                        y: .value("kcal", day.activeEnergyKcal ?? 0)
+                    )
+                    .interpolationMethod(.monotone)
+                    .foregroundStyle(Color.cadenceActivity.opacity(0.12))
+                }
+                .chartYAxisLabel("kcal")
+            }
         }
     }
 

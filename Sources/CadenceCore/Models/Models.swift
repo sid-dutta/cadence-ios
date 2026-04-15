@@ -126,6 +126,9 @@ public struct Workout: Identifiable, Codable, Hashable, Sendable, Syncable {
     public var exercises: [Exercise]
     public var updatedAt: Date
     public var deletedAt: Date?
+    /// UUID of the matching `HKWorkout` once exported to Apple Health, so it
+    /// isn't written twice.
+    public var healthKitID: UUID?
 
     public init(
         id: UUID = UUID(),
@@ -135,7 +138,8 @@ public struct Workout: Identifiable, Codable, Hashable, Sendable, Syncable {
         notes: String = "",
         exercises: [Exercise] = [],
         updatedAt: Date = Date(),
-        deletedAt: Date? = nil
+        deletedAt: Date? = nil,
+        healthKitID: UUID? = nil
     ) {
         self.id = id
         self.title = title
@@ -145,6 +149,14 @@ public struct Workout: Identifiable, Codable, Hashable, Sendable, Syncable {
         self.exercises = exercises
         self.updatedAt = updatedAt
         self.deletedAt = deletedAt
+        self.healthKitID = healthKitID
+    }
+
+    // `convertFromSnakeCase` turns `health_kit_id` into `healthKitId`, so the
+    // key must be spelled that way for the `healthKitID` property to match.
+    enum CodingKeys: String, CodingKey {
+        case id, title, startedAt, endedAt, notes, exercises, updatedAt, deletedAt
+        case healthKitID = "healthKitId"
     }
 
     public var isActive: Bool { endedAt == nil }
@@ -179,6 +191,9 @@ public struct Run: Identifiable, Codable, Hashable, Sendable, Syncable {
     public var notes: String
     public var updatedAt: Date
     public var deletedAt: Date?
+    /// UUID of the `HKWorkout` this run came from (import) or was written
+    /// to (export). Imports are deduplicated on it.
+    public var healthKitID: UUID?
 
     public init(
         id: UUID = UUID(),
@@ -187,7 +202,8 @@ public struct Run: Identifiable, Codable, Hashable, Sendable, Syncable {
         durationSeconds: TimeInterval,
         notes: String = "",
         updatedAt: Date = Date(),
-        deletedAt: Date? = nil
+        deletedAt: Date? = nil,
+        healthKitID: UUID? = nil
     ) {
         self.id = id
         self.startedAt = startedAt
@@ -196,7 +212,18 @@ public struct Run: Identifiable, Codable, Hashable, Sendable, Syncable {
         self.notes = notes
         self.updatedAt = updatedAt
         self.deletedAt = deletedAt
+        self.healthKitID = healthKitID
     }
+
+    enum CodingKeys: String, CodingKey {
+        case id, startedAt, distanceMeters, durationSeconds, notes, updatedAt, deletedAt
+        case healthKitID = "healthKitId"
+    }
+
+    public var isFromHealth: Bool { healthKitID != nil && notes.hasPrefix(Run.healthNotePrefix) }
+
+    /// Imported runs carry their source app in the notes, e.g. "From Apple Watch".
+    public static let healthNotePrefix = "From "
 
     /// Seconds per kilometer. `nil` for a zero-distance run.
     public var paceSecondsPerKm: Double? {
@@ -221,21 +248,42 @@ public struct DataSnapshot: Codable, Sendable, Equatable {
     public var runs: [Run]
     public var activeWorkout: Workout?
     public var lastSyncedAt: Date?
+    /// Cached daily metrics from Apple Health. Local only — never synced,
+    /// because the phone re-reads them from Health on demand.
+    public var healthDays: [HealthDay]
+    public var lastHealthImportAt: Date?
 
-    public static let currentSchemaVersion = 1
+    public static let currentSchemaVersion = 2
 
     public init(
         schemaVersion: Int = DataSnapshot.currentSchemaVersion,
         workouts: [Workout] = [],
         runs: [Run] = [],
         activeWorkout: Workout? = nil,
-        lastSyncedAt: Date? = nil
+        lastSyncedAt: Date? = nil,
+        healthDays: [HealthDay] = [],
+        lastHealthImportAt: Date? = nil
     ) {
         self.schemaVersion = schemaVersion
         self.workouts = workouts
         self.runs = runs
         self.activeWorkout = activeWorkout
         self.lastSyncedAt = lastSyncedAt
+        self.healthDays = healthDays
+        self.lastHealthImportAt = lastHealthImportAt
+    }
+
+    // Schema 1 files predate the health fields; decode them with defaults so
+    // an upgrade never loses data.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try c.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? 1
+        workouts = try c.decodeIfPresent([Workout].self, forKey: .workouts) ?? []
+        runs = try c.decodeIfPresent([Run].self, forKey: .runs) ?? []
+        activeWorkout = try c.decodeIfPresent(Workout.self, forKey: .activeWorkout)
+        lastSyncedAt = try c.decodeIfPresent(Date.self, forKey: .lastSyncedAt)
+        healthDays = try c.decodeIfPresent([HealthDay].self, forKey: .healthDays) ?? []
+        lastHealthImportAt = try c.decodeIfPresent(Date.self, forKey: .lastHealthImportAt)
     }
 
     public static let empty = DataSnapshot()

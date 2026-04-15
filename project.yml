@@ -39,6 +39,13 @@ targets:
         # Lets the dev build talk to a cadence-api running on localhost over plain HTTP.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
+        NSHealthShareUsageDescription: Cadence reads your steps, activity, heart rate, weight and runs from Health to show them alongside your workouts.
+        NSHealthUpdateUsageDescription: Cadence saves the workouts and runs you log so they count toward your Activity rings.
+    entitlements:
+      path: App/Cadence/Cadence.entitlements
+      properties:
+        com.apple.developer.healthkit: true
+        com.apple.developer.healthkit.access: []
     settings:
       base:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon

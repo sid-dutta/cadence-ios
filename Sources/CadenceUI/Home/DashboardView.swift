@@ -15,6 +15,9 @@ struct DashboardView: View {
                 if model.activeWorkout != nil {
                     resumeBanner
                 }
+                if let today = model.todayHealth, !today.isEmpty {
+                    todayFromHealth(today)
+                }
                 thisWeek
                 actions
                 if !model.personalRecords.isEmpty {
@@ -64,6 +67,34 @@ struct DashboardView: View {
         }
         .buttonStyle(.borderedProminent)
         .controlSize(.large)
+    }
+
+    private func todayFromHealth(_ day: HealthDay) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SectionHeader("Today") {
+                Button("Activity") { selectedTab = .trends }
+            }
+            HStack(spacing: 10) {
+                StatCard(
+                    title: "Steps",
+                    value: (day.steps ?? 0).formatted(),
+                    symbol: "figure.walk",
+                    tint: .cadenceActivity
+                )
+                StatCard(
+                    title: "Active",
+                    value: "\(Int((day.activeEnergyKcal ?? 0).rounded())) kcal",
+                    symbol: "flame.fill",
+                    tint: .cadenceActivity
+                )
+                StatCard(
+                    title: "Exercise",
+                    value: "\(Int((day.exerciseMinutes ?? 0).rounded())) min",
+                    symbol: "figure.run.circle.fill",
+                    tint: .cadenceActivity
+                )
+            }
+        }
     }
 
     private var thisWeek: some View {

@@ -8,17 +8,36 @@ public struct UserSettings: Codable, Equatable, Sendable {
     public var distanceUnit: DistanceUnit
     public var serverURLString: String
     public var accountEmail: String?
+    /// The user has gone through the Health permission sheet at least once.
+    public var healthConnected: Bool
+    /// Write finished workouts and logged runs back to Apple Health.
+    public var healthExportEnabled: Bool
 
     public init(
         weightUnit: WeightUnit = .lb,
         distanceUnit: DistanceUnit = .mi,
         serverURLString: String = "http://localhost:8000",
-        accountEmail: String? = nil
+        accountEmail: String? = nil,
+        healthConnected: Bool = false,
+        healthExportEnabled: Bool = true
     ) {
         self.weightUnit = weightUnit
         self.distanceUnit = distanceUnit
         self.serverURLString = serverURLString
         self.accountEmail = accountEmail
+        self.healthConnected = healthConnected
+        self.healthExportEnabled = healthExportEnabled
+    }
+
+    // Older saved settings lack the health keys.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        weightUnit = try c.decodeIfPresent(WeightUnit.self, forKey: .weightUnit) ?? .lb
+        distanceUnit = try c.decodeIfPresent(DistanceUnit.self, forKey: .distanceUnit) ?? .mi
+        serverURLString = try c.decodeIfPresent(String.self, forKey: .serverURLString) ?? "http://localhost:8000"
+        accountEmail = try c.decodeIfPresent(String.self, forKey: .accountEmail)
+        healthConnected = try c.decodeIfPresent(Bool.self, forKey: .healthConnected) ?? false
+        healthExportEnabled = try c.decodeIfPresent(Bool.self, forKey: .healthExportEnabled) ?? true
     }
 
     public var serverURL: URL? {
