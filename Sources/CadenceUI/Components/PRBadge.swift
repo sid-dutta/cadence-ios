@@ -1,7 +1,6 @@
 import SwiftUI
 import CadenceCore
 
-/// Tiny "PR" pill shown next to a set that beat the previous best.
 struct PRBadge: View {
     var body: some View {
         Text("PR")
@@ -14,7 +13,6 @@ struct PRBadge: View {
     }
 }
 
-/// The card that slides in when a set sets a new record.
 struct PRToast: View {
     let record: PersonalRecord
     let unit: WeightUnit
@@ -41,7 +39,6 @@ struct PRToast: View {
     }
 }
 
-/// Compact PR summary for horizontal carousels.
 struct PRChip: View {
     let record: PersonalRecord
     let unit: WeightUnit

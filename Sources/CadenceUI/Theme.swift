@@ -6,16 +6,10 @@ import UIKit
 import AppKit
 #endif
 
-// MARK: - Palette
-
 public extension Color {
-    /// Warm accent used for primary actions and the PR celebration.
     static let cadenceAccent = Color(red: 0.98, green: 0.45, blue: 0.16)
-    /// Strength-training data.
     static let cadenceStrength = Color(red: 0.36, green: 0.42, blue: 0.95)
-    /// Running data.
     static let cadenceRunning = Color(red: 0.13, green: 0.72, blue: 0.62)
-    /// Daily activity from Apple Health (steps, energy, exercise).
     static let cadenceActivity = Color(red: 0.93, green: 0.27, blue: 0.42)
 
     static var cardBackground: Color {
@@ -35,8 +29,6 @@ public extension Color {
     }
 }
 
-// MARK: - Card
-
 struct CardModifier: ViewModifier {
     var padding: CGFloat = 16
 
@@ -53,11 +45,6 @@ extension View {
     }
 }
 
-// MARK: - Platform helpers
-
-/// Small shims so the same view code compiles for iOS and macOS. The macOS
-/// build exists purely so the package can be type-checked and unit-tested
-/// without a simulator; the shipped app is iOS.
 extension View {
     @ViewBuilder
     func decimalKeyboard() -> some View {
@@ -107,7 +94,6 @@ extension View {
         #endif
     }
 
-    /// Full-screen on iPhone, a regular sheet elsewhere.
     @ViewBuilder
     func workoutCover<Content: View>(isPresented: Binding<Bool>, @ViewBuilder content: @escaping () -> Content) -> some View {
         #if os(iOS)

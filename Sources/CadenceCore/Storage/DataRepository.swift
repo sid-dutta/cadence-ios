@@ -1,17 +1,10 @@
 import Foundation
 
-/// Abstracts *where* a `DataSnapshot` lives so the app model can be driven by
-/// a real file in production and an in-memory store in tests and previews.
 public protocol DataRepository: Sendable {
     func load() throws -> DataSnapshot
     func save(_ snapshot: DataSnapshot) throws
 }
 
-// MARK: - JSONFileRepository
-
-/// Persists the snapshot as a single JSON document. Writes are atomic
-/// (`Data.write(options: .atomic)`) so a crash mid-save can't corrupt the
-/// store.
 public struct JSONFileRepository: DataRepository {
     public let fileURL: URL
 
@@ -19,7 +12,6 @@ public struct JSONFileRepository: DataRepository {
         self.fileURL = fileURL
     }
 
-    /// `~/Library/Application Support/Cadence/data.json` on every Apple platform.
     public static func defaultFileURL(fileManager: FileManager = .default) throws -> URL {
         let base = try fileManager.url(
             for: .applicationSupportDirectory,
@@ -46,9 +38,6 @@ public struct JSONFileRepository: DataRepository {
     }
 }
 
-// MARK: - InMemoryRepository
-
-/// Thread-safe in-memory store for tests and SwiftUI previews.
 public final class InMemoryRepository: DataRepository, @unchecked Sendable {
     private let lock = NSLock()
     private var snapshot: DataSnapshot

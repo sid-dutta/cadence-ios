@@ -3,15 +3,12 @@ import XCTest
 
 final class StatsEngineTests: XCTestCase {
 
-    // MARK: Fixtures
-
     private let calendar: Calendar = {
         var c = Calendar(identifier: .gregorian)
         c.timeZone = TimeZone(identifier: "UTC")!
         return c
     }()
 
-    /// Wednesday 2026-09-02 12:00 UTC.
     private let now = Date(timeIntervalSince1970: 1_788_350_400)
 
     private func day(_ offset: Int) -> Date {
@@ -29,8 +26,6 @@ final class StatsEngineTests: XCTestCase {
         )
     }
 
-    // MARK: Epley
-
     func testOneRepMaxSingleRepIsTheWeight() {
         XCTAssertEqual(StatsEngine.estimatedOneRepMax(weightKg: 100, reps: 1), 100)
     }
@@ -43,8 +38,6 @@ final class StatsEngineTests: XCTestCase {
         XCTAssertEqual(StatsEngine.estimatedOneRepMax(weightKg: 0, reps: 5), 0)
         XCTAssertEqual(StatsEngine.estimatedOneRepMax(weightKg: 100, reps: 0), 0)
     }
-
-    // MARK: Personal records
 
     func testPersonalRecordsPicksBestEstimatedOneRepMax() {
         let history = [
@@ -110,8 +103,6 @@ final class StatsEngineTests: XCTestCase {
         XCTAssertFalse(StatsEngine.isPersonalRecord(equal, exerciseName: "Bench Press", history: [past]))
     }
 
-    // MARK: Weekly summaries
-
     func testWeeklySummariesZeroFillsAndSums() {
         let workouts = [
             workout("A", weightKg: 100, reps: 10, daysAgo: 0),   // this week, 1000 kg
@@ -138,8 +129,6 @@ final class StatsEngineTests: XCTestCase {
         XCTAssertEqual(weeks.first?.workoutCount, 0)
     }
 
-    // MARK: Streaks
-
     func testStreakCountsConsecutiveWeeks() {
         let workouts = [0, 7, 14].map { workout("A", weightKg: 10, reps: 1, daysAgo: $0) }
         XCTAssertEqual(StatsEngine.currentStreak(workouts: workouts, runs: [], asOf: now, calendar: calendar), 3)
@@ -159,8 +148,6 @@ final class StatsEngineTests: XCTestCase {
         XCTAssertEqual(StatsEngine.currentStreak(workouts: [], runs: [], asOf: now, calendar: calendar), 0)
     }
 
-    // MARK: Exercise history
-
     func testExerciseHistoryIsChronologicalAndSkipsActive() {
         var active = workout("Squat", weightKg: 300, reps: 1, daysAgo: 0)
         active.endedAt = nil
@@ -173,8 +160,6 @@ final class StatsEngineTests: XCTestCase {
         XCTAssertEqual(points.count, 2)
         XCTAssertEqual(points.map(\.topWeightKg), [90, 100])
     }
-
-    // MARK: Running
 
     func testFastestRunRespectsMinimumDistance() {
         let sprint = Run(distanceMeters: 400, durationSeconds: 60)     // 2:30/km

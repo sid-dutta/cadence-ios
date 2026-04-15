@@ -1,6 +1,5 @@
 import SwiftUI
 
-/// Hours / minutes / seconds wheels bound to a single `TimeInterval`.
 struct DurationPicker: View {
     @Binding var seconds: TimeInterval
 
@@ -26,8 +25,6 @@ struct DurationPicker: View {
     }
 
     var body: some View {
-        // Wheels get their natural height (~216pt on iOS); constraining them
-        // clips the selection band off-center.
         HStack(spacing: 0) {
             wheel("hr", selection: hours, range: 0..<24)
             wheel("min", selection: minutes, range: 0..<60)

@@ -9,15 +9,12 @@ final class HealthTests: XCTestCase {
         return c
     }()
 
-    /// 2026-09-02 12:00 UTC.
     private let now = Date(timeIntervalSince1970: 1_788_350_400)
 
     private func day(_ offset: Int, steps: Int? = nil, kcal: Double? = nil, mass: Double? = nil, hr: Double? = nil) -> HealthDay {
         let date = calendar.startOfDay(for: calendar.date(byAdding: .day, value: offset, to: now)!)
         return HealthDay(date: date, steps: steps, activeEnergyKcal: kcal, restingHeartRate: hr, bodyMassKg: mass)
     }
-
-    // MARK: HealthStats
 
     func testSeriesZeroFillsAndOrdersOldestFirst() {
         let days = [day(0, steps: 100), day(-2, steps: 300)]
@@ -49,8 +46,6 @@ final class HealthTests: XCTestCase {
         XCTAssertNil(HealthStats.day(now.addingTimeInterval(-86_400 * 3), in: days, calendar: calendar))
     }
 
-    // MARK: HealthImport
-
     private func run(hk: UUID?, deleted: Bool = false) -> Run {
         Run(startedAt: now, distanceMeters: 5000, durationSeconds: 1500, deletedAt: deleted ? now : nil, healthKitID: hk)
     }
@@ -81,8 +76,6 @@ final class HealthTests: XCTestCase {
         let merged = HealthImport.mergeDays(fetched: fetched, into: existing, calendar: calendar)
         XCTAssertEqual(merged.map { $0.steps ?? 0 }, [1, 20, 30])
     }
-
-    // MARK: Backward compatibility
 
     func testSchemaOneSnapshotDecodesWithHealthDefaults() throws {
         let legacy = #"{"schema_version":1,"workouts":[],"runs":[{"id":"11111111-2222-3333-4444-555555555555","started_at":"2026-09-01T07:00:00Z","distance_meters":5000,"duration_seconds":1500,"notes":"","updated_at":"2026-09-01T07:30:00Z","deleted_at":null}],"active_workout":null,"last_synced_at":null}"#

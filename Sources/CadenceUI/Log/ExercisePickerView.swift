@@ -35,8 +35,6 @@ struct ExercisePickerView: View {
                 ForEach(sections, id: \.group) { section in
                     Section(section.group.displayName) {
                         ForEach(section.exercises) { item in
-                            // Plain style keeps the row in primary text color (like a
-                            // NavigationLink) instead of the accent tint a List gives Buttons.
                             Button {
                                 pick(item.makeExercise())
                             } label: {

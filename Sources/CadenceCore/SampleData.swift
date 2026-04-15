@@ -1,8 +1,5 @@
 import Foundation
 
-/// Deterministic demo data: a few weeks of push/pull/legs sessions with
-/// steady progressive overload, plus two runs a week that gradually speed up.
-/// Seeded so previews, screenshots and tests all see the same history.
 public enum SampleData {
 
     public static func snapshot(weeks: Int = 8, endingAt end: Date = Date(), seed: UInt64 = 42) -> DataSnapshot {
@@ -37,7 +34,6 @@ public enum SampleData {
         ]
 
         for weekOffset in stride(from: weeks - 1, through: 0, by: -1) {
-            // ~2.5% overload per week, rounded to plate increments.
             let progress = 1 + Double(weeks - 1 - weekOffset) * 0.025
 
             for (dayIndex, template) in templates.enumerated() {
@@ -75,7 +71,6 @@ public enum SampleData {
                 ))
             }
 
-            // Two runs a week: an easy 5K-ish and a longer weekend run.
             let runSpecs: [(day: Int, km: Double, baseSecPerKm: Double)] = [(2, 5, 345), (6, 8, 365)]
             for spec in runSpecs {
                 guard let start = date(weeksAgo: weekOffset, dayOffset: spec.day, hour: 7, from: end, calendar: calendar),
@@ -104,8 +99,6 @@ public enum SampleData {
         )
     }
 
-    // MARK: Helpers
-
     private static func date(weeksAgo: Int, dayOffset: Int, hour: Int, from end: Date, calendar: Calendar) -> Date? {
         let weekStart = StatsEngine.startOfWeek(containing: end, calendar: calendar)
         guard let base = calendar.date(byAdding: .weekOfYear, value: -weeksAgo, to: weekStart),
@@ -118,7 +111,6 @@ public enum SampleData {
     }
 }
 
-/// SplitMix64 — tiny, fast, and reproducible across platforms.
 struct SeededGenerator: RandomNumberGenerator {
     private var state: UInt64
 
@@ -138,7 +130,6 @@ struct SeededGenerator: RandomNumberGenerator {
         Double(next() >> 11) / Double(1 << 53)
     }
 
-    /// A random-looking but reproducible v4-style UUID.
     mutating func nextUUID() -> UUID {
         var bytes = [UInt8](repeating: 0, count: 16)
         let hi = next(), lo = next()

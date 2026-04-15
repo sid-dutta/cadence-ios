@@ -1,16 +1,12 @@
 import Foundation
 import CadenceCore
 
-/// Non-synced preferences. Stored in `UserDefaults`; the auth token
-/// deliberately lives elsewhere (see `TokenStore`).
 public struct UserSettings: Codable, Equatable, Sendable {
     public var weightUnit: WeightUnit
     public var distanceUnit: DistanceUnit
     public var serverURLString: String
     public var accountEmail: String?
-    /// The user has gone through the Health permission sheet at least once.
     public var healthConnected: Bool
-    /// Write finished workouts and logged runs back to Apple Health.
     public var healthExportEnabled: Bool
 
     public init(
@@ -29,7 +25,6 @@ public struct UserSettings: Codable, Equatable, Sendable {
         self.healthExportEnabled = healthExportEnabled
     }
 
-    // Older saved settings lack the health keys.
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         weightUnit = try c.decodeIfPresent(WeightUnit.self, forKey: .weightUnit) ?? .lb
@@ -52,7 +47,6 @@ public protocol SettingsStore: Sendable {
     func save(_ settings: UserSettings)
 }
 
-/// `UserDefaults` is documented thread-safe but not marked `Sendable`.
 public struct UserDefaultsSettingsStore: SettingsStore, @unchecked Sendable {
     private let key = "cadence.settings"
     private let defaults: UserDefaults

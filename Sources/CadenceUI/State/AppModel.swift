@@ -2,7 +2,6 @@ import Foundation
 import Observation
 import CadenceCore
 
-/// A workout or run, for lists that show both.
 public enum ActivityItem: Identifiable, Hashable, Sendable {
     case workout(Workout)
     case run(Run)
@@ -22,8 +21,6 @@ public enum ActivityItem: Identifiable, Hashable, Sendable {
     }
 }
 
-/// The single source of truth for the UI. Every mutation goes through here,
-/// which is what makes the "persist after every change" rule easy to keep.
 @MainActor
 @Observable
 public final class AppModel {
@@ -42,18 +39,13 @@ public final class AppModel {
         case failed(String)
     }
 
-    // MARK: State
-
-    /// Includes tombstones; use `visibleWorkouts` for display.
     public private(set) var workouts: [Workout] = []
-    /// Includes tombstones; use `visibleRuns` for display.
     public private(set) var runs: [Run] = []
     public private(set) var activeWorkout: Workout?
     public private(set) var lastSyncedAt: Date?
     public private(set) var syncStatus: SyncStatus = .idle
     public private(set) var storageError: String?
 
-    /// Daily metrics cached from Apple Health, oldest first.
     public private(set) var healthDays: [HealthDay] = []
     public private(set) var lastHealthImportAt: Date?
     public private(set) var healthStatus: HealthStatus = .idle
@@ -68,8 +60,6 @@ public final class AppModel {
     private let settingsStore: SettingsStore
     private let tokenStore: TokenStore
     private let health: HealthService
-
-    // MARK: Init
 
     public init(repository: DataRepository, settingsStore: SettingsStore, tokenStore: TokenStore, health: HealthService) {
         self.repository = repository
@@ -92,7 +82,6 @@ public final class AppModel {
         }
     }
 
-    /// Production wiring: JSON file + UserDefaults + Keychain + HealthKit.
     public static func live() -> AppModel {
         let repository: DataRepository
         do {
@@ -114,7 +103,6 @@ public final class AppModel {
         )
     }
 
-    /// In-memory model pre-loaded with sample history, for previews and UI tests.
     public static func preview(weeks: Int = 8, signedIn: Bool = false, healthConnected: Bool = true) -> AppModel {
         let model = AppModel(
             repository: InMemoryRepository(snapshot: SampleData.snapshot(weeks: weeks)),
@@ -130,8 +118,6 @@ public final class AppModel {
         }
         return model
     }
-
-    // MARK: Derived
 
     public var visibleWorkouts: [Workout] {
         SyncEngine.visible(workouts).filter { !$0.isActive }.sorted { $0.startedAt > $1.startedAt }
@@ -182,8 +168,6 @@ public final class AppModel {
         runs.first { $0.id == id }
     }
 
-    // MARK: Active workout
-
     public func startWorkout(title: String? = nil) {
         guard activeWorkout == nil else { return }
         activeWorkout = Workout(title: title ?? Self.defaultTitle(for: Date()))
@@ -212,7 +196,6 @@ public final class AppModel {
         mutateActive { $0.exercises.removeAll { $0.id == id } }
     }
 
-    /// New set pre-filled from the previous one so the common case is a tap.
     public func addSet(toExercise exerciseID: UUID) {
         mutateActive { workout in
             guard let index = workout.exercises.firstIndex(where: { $0.id == exerciseID }) else { return }
@@ -238,8 +221,6 @@ public final class AppModel {
         }
     }
 
-    /// Flips completion and reports whether completing this set just set a
-    /// new personal record, so the UI can celebrate.
     @discardableResult
     public func toggleSetCompletion(setID: UUID, inExercise exerciseID: UUID) -> PersonalRecord? {
         guard let workout = activeWorkout,
@@ -250,8 +231,6 @@ public final class AppModel {
         set.isCompleted.toggle()
         let exercise = workout.exercises[e]
 
-        // A PR must beat all prior history *and* every other set already
-        // completed in this session — repeating a record isn't a new one.
         let sessionBest = exercise.completedSets
             .filter { $0.id != set.id }
             .map(\.estimatedOneRepMaxKg)
@@ -281,7 +260,6 @@ public final class AppModel {
         let now = Date()
         workout.endedAt = now
         workout.updatedAt = now
-        // Drop sets that were never filled in.
         workout.exercises = workout.exercises.compactMap { exercise in
             var exercise = exercise
             exercise.sets.removeAll { !$0.isCompleted && $0.reps == 0 && $0.weightKg == 0 }
@@ -297,8 +275,6 @@ public final class AppModel {
         activeWorkout = nil
         persist()
     }
-
-    // MARK: History
 
     public func updateWorkout(_ workout: Workout) {
         guard let index = workouts.firstIndex(where: { $0.id == workout.id }) else { return }
@@ -321,7 +297,6 @@ public final class AppModel {
         run.updatedAt = Date()
         let isNew: Bool
         if let index = runs.firstIndex(where: { $0.id == run.id }) {
-            // Keep the Health link across edits.
             run.healthKitID = run.healthKitID ?? runs[index].healthKitID
             runs[index] = run
             isNew = false
@@ -335,9 +310,6 @@ public final class AppModel {
         }
     }
 
-    // MARK: Apple Health
-
-    /// Shows the permission sheet, then pulls everything in.
     public func connectHealth() async {
         guard health.isAvailable else { return }
         healthStatus = .working
@@ -358,14 +330,10 @@ public final class AppModel {
         persist()
     }
 
-    /// Pulls new runs and the last 90 days of daily metrics. Safe to call on
-    /// every launch; imports are idempotent.
     public func importFromHealth() async {
         guard isHealthConnected, healthStatus != .working else { return }
         healthStatus = .working
         do {
-            // Look back a day past the last import so a run that finished
-            // while we were importing isn't missed.
             let since = lastHealthImportAt.map { $0.addingTimeInterval(-86_400) }
             async let fetchedRuns = health.fetchRuns(since: since)
             async let fetchedDays = health.fetchDailyMetrics(days: 90)
@@ -425,8 +393,6 @@ public final class AppModel {
         persist()
     }
 
-    // MARK: Account & sync
-
     public func signIn(email: String, password: String, createAccount: Bool) async throws {
         let client = try makeClient()
         let credentials = AuthCredentials(email: email.trimmingCharacters(in: .whitespaces).lowercased(), password: password)
@@ -446,8 +412,6 @@ public final class AppModel {
         persist()
     }
 
-    /// Push local changes since the last sync, pull the server's, and merge
-    /// with last-write-wins. Safe to call repeatedly.
     public func sync() async {
         guard isSignedIn, syncStatus != .syncing else { return }
         syncStatus = .syncing
@@ -479,8 +443,6 @@ public final class AppModel {
         return CadenceAPIClient(baseURL: url, token: tokenStore.read())
     }
 
-    // MARK: Data management
-
     public func loadSampleData() {
         let sample = SampleData.snapshot()
         workouts = SyncEngine.merge(local: workouts, remote: sample.workouts)
@@ -498,15 +460,12 @@ public final class AppModel {
         persist()
     }
 
-    /// Writes a pretty-printed export to a temp file for `ShareLink`.
     public func exportFileURL() throws -> URL {
         let data = try JSONCoding.encode(snapshot, prettyPrinted: true)
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("cadence-export.json")
         try data.write(to: url, options: .atomic)
         return url
     }
-
-    // MARK: Persistence
 
     private var snapshot: DataSnapshot {
         DataSnapshot(

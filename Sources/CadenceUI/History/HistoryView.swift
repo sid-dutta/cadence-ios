@@ -18,7 +18,6 @@ struct HistoryView: View {
         }
     }
 
-    /// Grouped by month, newest first. Month keys are the first of the month.
     private var sections: [(month: Date, items: [ActivityItem])] {
         let calendar = Calendar.current
         let grouped = Dictionary(grouping: items) { item in

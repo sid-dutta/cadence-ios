@@ -1,7 +1,5 @@
 import Foundation
 
-// MARK: - Wire types
-
 public struct AuthCredentials: Codable, Sendable {
     public var email: String
     public var password: String
@@ -41,8 +39,6 @@ public struct SyncResponse: Codable, Sendable {
     public let runs: [Run]
 }
 
-// MARK: - Errors
-
 public enum APIError: Error, LocalizedError, Sendable {
     case invalidURL
     case invalidResponse
@@ -63,15 +59,10 @@ public enum APIError: Error, LocalizedError, Sendable {
     }
 }
 
-/// FastAPI's default error envelope.
 private struct ErrorEnvelope: Decodable {
     let detail: String
 }
 
-// MARK: - Client
-
-/// Thin, typed wrapper over the `cadence-api` REST endpoints. An `actor` so
-/// the bearer token can be swapped safely from any task.
 public actor CadenceAPIClient {
     public let baseURL: URL
     private let session: URLSession
@@ -86,8 +77,6 @@ public actor CadenceAPIClient {
     public func setToken(_ token: String?) {
         self.token = token
     }
-
-    // MARK: Auth
 
     public func register(_ credentials: AuthCredentials) async throws -> TokenResponse {
         let response: TokenResponse = try await send("auth/register", method: "POST", body: credentials)
@@ -105,21 +94,15 @@ public actor CadenceAPIClient {
         try await send("auth/me", method: "GET", body: Optional<Never>.none)
     }
 
-    // MARK: Sync
-
     public func sync(_ request: SyncRequest) async throws -> SyncResponse {
         try await send("sync", method: "POST", body: request)
     }
-
-    // MARK: Health
 
     public func health() async throws -> Bool {
         struct Health: Decodable { let status: String }
         let result: Health = try await send("health", method: "GET", body: Optional<Never>.none)
         return result.status == "ok"
     }
-
-    // MARK: Transport
 
     private func send<Body: Encodable, Response: Decodable>(
         _ path: String,

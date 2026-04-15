@@ -1,7 +1,6 @@
 import SwiftUI
 import CadenceCore
 
-/// One line of history: a workout or a run.
 struct ActivityRow: View {
     let item: ActivityItem
     let settings: UserSettings

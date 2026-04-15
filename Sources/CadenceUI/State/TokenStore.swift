@@ -1,16 +1,11 @@
 import Foundation
 import Security
 
-/// Where the API bearer token lives. Kept behind a protocol so previews and
-/// tests never touch the real Keychain.
 public protocol TokenStore: Sendable {
     func read() -> String?
     func write(_ token: String?)
 }
 
-/// Stores the token as a generic-password Keychain item, scoped to this app.
-/// `UserDefaults` would be simpler but is readable from device backups, which
-/// is the wrong place for a credential.
 public struct KeychainTokenStore: TokenStore {
     private let service = "com.sidharthdutta.cadence"
     private let account = "api-token"

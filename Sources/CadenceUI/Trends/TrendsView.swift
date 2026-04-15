@@ -49,8 +49,6 @@ struct TrendsView: View {
         }
     }
 
-    // MARK: Strength
-
     private var summaries: [WeeklySummary] { model.weeklySummaries(weeks: weeks) }
     private var weightUnit: WeightUnit { model.settings.weightUnit }
     private var distanceUnit: DistanceUnit { model.settings.distanceUnit }
@@ -162,8 +160,6 @@ struct TrendsView: View {
         }
     }
 
-    // MARK: Running
-
     @ViewBuilder
     private var running: some View {
         if model.visibleRuns.isEmpty {
@@ -246,8 +242,6 @@ struct TrendsView: View {
             )
         }
     }
-
-    // MARK: Activity (Apple Health)
 
     private var activityDays: [HealthDay] {
         model.healthSeries(days: min(weeks * 7, 90))
@@ -343,8 +337,6 @@ struct TrendsView: View {
             }
         }
     }
-
-    // MARK: Helpers
 
     private var cutoff: Date {
         Calendar.current.date(byAdding: .weekOfYear, value: -weeks, to: StatsEngine.startOfWeek(containing: Date())) ?? .distantPast

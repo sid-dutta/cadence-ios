@@ -4,8 +4,6 @@ import CadenceCore
 #if canImport(HealthKit)
 import HealthKit
 
-/// The real thing. `HKHealthStore` is documented as thread-safe, and every
-/// query below hops through a continuation, so the class is safe to share.
 public final class HealthKitService: HealthService, @unchecked Sendable {
     private let store = HKHealthStore()
     private let calendar = Calendar.current
@@ -13,8 +11,6 @@ public final class HealthKitService: HealthService, @unchecked Sendable {
     public init() {}
 
     public var isAvailable: Bool { HKHealthStore.isHealthDataAvailable() }
-
-    // MARK: Types
 
     private var stepCount: HKQuantityType { HKQuantityType(.stepCount) }
     private var activeEnergy: HKQuantityType { HKQuantityType(.activeEnergyBurned) }
@@ -31,14 +27,10 @@ public final class HealthKitService: HealthService, @unchecked Sendable {
         [HKObjectType.workoutType(), walkRunDistance, activeEnergy]
     }
 
-    // MARK: Authorization
-
     public func requestAuthorization() async throws {
         guard isAvailable else { throw HealthServiceError.unavailable }
         try await store.requestAuthorization(toShare: writeTypes, read: readTypes)
     }
-
-    // MARK: Reading
 
     public func fetchRuns(since: Date?) async throws -> [Run] {
         guard isAvailable else { return [] }
@@ -139,7 +131,6 @@ public final class HealthKitService: HealthService, @unchecked Sendable {
         return result
     }
 
-    /// Body weight is a point sample, not a sum: keep the last reading per day.
     private func dailyLatest(_ type: HKQuantityType, unit: HKUnit, from start: Date) async throws -> [Date: Double] {
         let predicate = HKQuery.predicateForSamples(withStart: start, end: nil)
         let sort = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)
@@ -155,8 +146,6 @@ public final class HealthKitService: HealthService, @unchecked Sendable {
         }
         return result
     }
-
-    // MARK: Writing
 
     public func saveWorkout(_ workout: Workout) async throws -> UUID {
         guard let end = workout.endedAt else { throw HealthServiceError.invalidWorkout }

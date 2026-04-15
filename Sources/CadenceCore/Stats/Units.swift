@@ -23,7 +23,6 @@ public enum WeightUnit: String, Codable, CaseIterable, Sendable, Identifiable {
         }
     }
 
-    /// Typical plate increment in this unit, used by steppers.
     public var defaultIncrement: Double {
         switch self {
         case .kg: 2.5
@@ -55,7 +54,6 @@ public enum DistanceUnit: String, Codable, CaseIterable, Sendable, Identifiable 
         }
     }
 
-    /// Converts a per-kilometer pace into per-unit pace.
     public func pace(fromSecondsPerKm secondsPerKm: Double) -> Double {
         switch self {
         case .km: secondsPerKm
@@ -64,7 +62,6 @@ public enum DistanceUnit: String, Codable, CaseIterable, Sendable, Identifiable 
     }
 }
 
-/// Human-readable formatting shared by the app and its widgets.
 public enum Formatters {
 
     public static func weight(kg: Double, unit: WeightUnit, fractionDigits: Int = 1) -> String {
@@ -77,7 +74,6 @@ public enum Formatters {
         return "\(trimmed(value, maxFractionDigits: fractionDigits)) \(unit.symbol)"
     }
 
-    /// `"5:12 /km"` style pace.
     public static func pace(secondsPerKm: Double?, unit: DistanceUnit) -> String {
         guard let secondsPerKm, secondsPerKm.isFinite, secondsPerKm > 0 else { return "—" }
         let perUnit = unit.pace(fromSecondsPerKm: secondsPerKm)
@@ -85,7 +81,6 @@ public enum Formatters {
         return String(format: "%d:%02d /%@", total / 60, total % 60, unit.symbol)
     }
 
-    /// `"1h 05m"` for long durations, `"45:12"` for anything under an hour.
     public static func duration(_ seconds: TimeInterval) -> String {
         let total = max(0, Int(seconds.rounded()))
         let hours = total / 3600
@@ -97,7 +92,6 @@ public enum Formatters {
         return String(format: "%d:%02d", minutes, secs)
     }
 
-    /// Full clock-style `"1:05:09"` used by the live workout timer.
     public static func clock(_ seconds: TimeInterval) -> String {
         let total = max(0, Int(seconds.rounded()))
         let hours = total / 3600
@@ -109,7 +103,6 @@ public enum Formatters {
         return String(format: "%02d:%02d", minutes, secs)
     }
 
-    /// Large volumes read better as `"12.4k kg"`.
     public static func compactVolume(kg: Double, unit: WeightUnit) -> String {
         let value = unit.fromKg(kg)
         if value >= 10_000 {

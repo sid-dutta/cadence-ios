@@ -1,17 +1,13 @@
 import SwiftUI
 import CadenceCore
 
-/// Manual run entry. (A future HealthKit importer would feed the same
-/// `Run` value through `model.logRun`.)
 struct RunLogView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
 
-    /// Pass an existing run to edit it.
     var existing: Run? = nil
 
     @State private var date = Date()
-    /// Optional so the field shows a placeholder until the user types.
     @State private var distance: Double?
     @State private var duration: TimeInterval = 0
     @State private var notes = ""

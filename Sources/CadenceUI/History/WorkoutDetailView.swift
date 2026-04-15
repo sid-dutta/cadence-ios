@@ -9,7 +9,6 @@ struct WorkoutDetailView: View {
     @State private var confirmingDelete = false
 
     private var records: Set<UUID> {
-        // Sets in this workout that are still the all-time best for their exercise.
         Set(model.personalRecords.filter { $0.workoutID == workoutID }.map { record in
             model.workout(id: workoutID)?.exercises
                 .first { $0.name.lowercased() == record.exerciseName.lowercased() }?
@@ -71,7 +70,6 @@ struct WorkoutDetailView: View {
                     HStack {
                         Label(exercise.name, systemImage: exercise.muscleGroup.symbolName)
                         Spacer()
-                        // Bodyweight work has no meaningful 1RM.
                         if let best = exercise.bestSet, best.weightKg > 0 {
                             Text("1RM ≈ \(Formatters.weight(kg: best.estimatedOneRepMaxKg, unit: unit, fractionDigits: 0))")
                                 .monospacedDigit()

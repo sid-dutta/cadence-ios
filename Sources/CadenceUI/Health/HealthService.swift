@@ -1,26 +1,17 @@
 import Foundation
 import CadenceCore
 
-/// What the app needs from Apple Health, independent of HealthKit itself so
-/// previews, tests and the macOS build never touch the real store.
 public protocol HealthService: Sendable {
-    /// False on devices without Health (iPad, Mac) — the UI hides the feature.
     var isAvailable: Bool { get }
 
-    /// Presents the system permission sheet. HealthKit never reveals whether
-    /// *read* access was granted, so callers should just try to fetch.
     func requestAuthorization() async throws
 
-    /// Running workouts recorded by any app, newest first.
     func fetchRuns(since: Date?) async throws -> [Run]
 
-    /// Daily totals for the last `days` days, including today.
     func fetchDailyMetrics(days: Int) async throws -> [HealthDay]
 
-    /// Writes a strength-training workout. Returns the HealthKit UUID.
     func saveWorkout(_ workout: Workout) async throws -> UUID
 
-    /// Writes a running workout with its distance. Returns the HealthKit UUID.
     func saveRun(_ run: Run) async throws -> UUID
 }
 
@@ -38,8 +29,6 @@ public enum HealthServiceError: Error, LocalizedError, Sendable {
     }
 }
 
-/// Stand-in for previews and the simulator: pretends Health is present and
-/// returns a plausible week of metrics plus a couple of Watch runs.
 public struct PreviewHealthService: HealthService {
     public var isAvailable: Bool = true
 
@@ -90,7 +79,6 @@ public struct PreviewHealthService: HealthService {
     public func saveRun(_ run: Run) async throws -> UUID { UUID() }
 }
 
-/// For platforms without Health at all.
 public struct UnavailableHealthService: HealthService {
     public var isAvailable: Bool { false }
     public init() {}

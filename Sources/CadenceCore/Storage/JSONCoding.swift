@@ -1,8 +1,5 @@
 import Foundation
 
-/// The one place that decides how Cadence models look on disk and on the
-/// wire. Keys are snake_case and dates are ISO 8601 in UTC so the same JSON
-/// is accepted verbatim by the Python API.
 public enum JSONCoding {
 
     public static func makeEncoder(prettyPrinted: Bool = false) -> JSONEncoder {
@@ -43,9 +40,6 @@ public enum JSONCoding {
         try makeDecoder().decode(type, from: data)
     }
 
-    /// Servers vary in whether they emit fractional seconds, so parsing tries
-    /// both shapes. `ISO8601DateFormatter` isn't `Sendable`, hence the
-    /// per-call construction; it's cheap relative to a network round-trip.
     enum ISO8601 {
         static var withFractionalSeconds: ISO8601DateFormatter {
             let formatter = ISO8601DateFormatter()

@@ -1,7 +1,5 @@
 import Foundation
 
-// MARK: - Result types
-
 public struct PersonalRecord: Identifiable, Hashable, Sendable {
     public let exerciseName: String
     public let muscleGroup: MuscleGroup
@@ -60,25 +58,15 @@ public struct ExerciseDataPoint: Identifiable, Hashable, Sendable {
     public var id: UUID { workoutID }
 }
 
-// MARK: - StatsEngine
-
-/// Pure functions over `[Workout]` and `[Run]`. Nothing in here touches the
-/// UI or storage, so every calculation is straightforward to unit-test and the
-/// same math is mirrored in `cadence-api/app/stats.py` on the server.
 public enum StatsEngine {
 
-    // MARK: Strength
-
-    /// Epley formula: `w × (1 + r / 30)`. A single rep is, by definition, the
-    /// 1RM; zero reps or weight contributes nothing.
+    // Epley: w * (1 + r/30). One rep is by definition the 1RM.
     public static func estimatedOneRepMax(weightKg: Double, reps: Int) -> Double {
         guard weightKg > 0, reps > 0 else { return 0 }
         guard reps > 1 else { return weightKg }
         return weightKg * (1 + Double(reps) / 30)
     }
 
-    /// One record per distinct exercise name, ranked by estimated 1RM. Ties go
-    /// to the earlier date so a PR isn't "re-achieved" by matching it.
     public static func personalRecords(in workouts: [Workout]) -> [PersonalRecord] {
         var best: [String: PersonalRecord] = [:]
 
@@ -110,9 +98,6 @@ public enum StatsEngine {
         return best.values.sorted { $0.estimatedOneRepMaxKg > $1.estimatedOneRepMaxKg }
     }
 
-    /// Whether `set` beats every previously-completed set for the same
-    /// exercise. The workout the set belongs to is excluded so sets logged
-    /// earlier in the same session don't mask a PR.
     public static func isPersonalRecord(
         _ set: ExerciseSet,
         exerciseName: String,
@@ -124,7 +109,6 @@ public enum StatsEngine {
         return set.estimatedOneRepMaxKg > priorBest
     }
 
-    /// Highest estimated 1RM ever completed for an exercise; 0 if never done.
     public static func bestOneRepMax(
         exerciseName: String,
         in history: [Workout],
@@ -140,9 +124,6 @@ public enum StatsEngine {
             .max() ?? 0
     }
 
-    /// Within one session, the set that holds the record: the best completed
-    /// set that beats all prior history. Ties go to the earlier set, so the
-    /// second of two identical sets is not "another PR".
     public static func recordSet(in exercise: Exercise, history: [Workout], excludingWorkoutID: UUID? = nil) -> ExerciseSet? {
         let priorBest = bestOneRepMax(exerciseName: exercise.name, in: history, excludingWorkoutID: excludingWorkoutID)
         return exercise.completedSets
@@ -150,8 +131,6 @@ public enum StatsEngine {
             .max { $0.estimatedOneRepMaxKg < $1.estimatedOneRepMaxKg }
     }
 
-    /// Per-workout best set for a single exercise, oldest first. Feeds the
-    /// strength trend chart.
     public static func exerciseHistory(name: String, in workouts: [Workout]) -> [ExerciseDataPoint] {
         let key = normalize(name)
         return workouts
@@ -175,7 +154,6 @@ public enum StatsEngine {
             .sorted { $0.date < $1.date }
     }
 
-    /// Every exercise name that appears in completed history, most recent first.
     public static func trackedExerciseNames(in workouts: [Workout]) -> [String] {
         var seen = Set<String>()
         var names: [String] = []
@@ -189,11 +167,6 @@ public enum StatsEngine {
         return names
     }
 
-    // MARK: Weekly aggregation
-
-    /// `weeks` buckets ending with the week that contains `endingAt`, oldest
-    /// first. Weeks that had no activity are still returned (with zeros) so
-    /// charts show gaps honestly.
     public static func weeklySummaries(
         workouts: [Workout],
         runs: [Run],
@@ -225,10 +198,6 @@ public enum StatsEngine {
         }
     }
 
-    /// Number of consecutive weeks, counting back from the week containing
-    /// `asOf`, with at least one workout or run. The current week counts if
-    /// it has activity; if it doesn't yet, the streak continues from last week
-    /// (you haven't "broken" a streak until the week ends).
     public static func currentStreak(
         workouts: [Workout],
         runs: [Run],
@@ -256,8 +225,6 @@ public enum StatsEngine {
         return streak
     }
 
-    // MARK: Running
-
     public static func fastestRun(in runs: [Run], minimumDistanceMeters: Double = 1000) -> Run? {
         runs.filter { !$0.isDeleted && $0.distanceMeters >= minimumDistanceMeters }
             .min { ($0.paceSecondsPerKm ?? .infinity) < ($1.paceSecondsPerKm ?? .infinity) }
@@ -270,8 +237,6 @@ public enum StatsEngine {
     public static func totalDistanceMeters(in runs: [Run]) -> Double {
         runs.filter { !$0.isDeleted }.reduce(0) { $0 + $1.distanceMeters }
     }
-
-    // MARK: Helpers
 
     public static func startOfWeek(containing date: Date, calendar: Calendar = .current) -> Date {
         let components = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: date)

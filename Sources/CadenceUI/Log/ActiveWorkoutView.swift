@@ -1,9 +1,6 @@
 import SwiftUI
 import CadenceCore
 
-/// The live logging screen. Presented full-screen so the timer and set entry
-/// have the whole display; the workout itself survives dismissal because it's
-/// stored on the model (and on disk), not in view state.
 struct ActiveWorkoutView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
@@ -63,8 +60,6 @@ struct ActiveWorkoutView: View {
             }
         }
     }
-
-    // MARK: Content
 
     @ViewBuilder
     private func content(for workout: Workout) -> some View {
@@ -195,8 +190,6 @@ struct ActiveWorkoutView: View {
     }
 }
 
-// MARK: - SetRow
-
 private struct SetRow: View {
     let index: Int
     let set: ExerciseSet
@@ -208,8 +201,6 @@ private struct SetRow: View {
     @FocusState private var focused: Field?
     private enum Field { case weight, reps }
 
-    // Optional bindings so an unset value shows the "0" placeholder rather
-    // than a literal 0 that typed digits would append to.
     private var weight: Binding<Double?> {
         Binding(
             get: {

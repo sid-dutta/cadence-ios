@@ -5,7 +5,6 @@ public enum AppTab: Hashable {
     case home, history, trends, settings
 }
 
-/// The app's entry view. The iOS target's `@main` App just wraps this.
 public struct CadenceRootView: View {
     @State private var model: AppModel
     @State private var selectedTab: AppTab = .home
@@ -57,7 +56,6 @@ public struct CadenceRootView: View {
                 .environment(model)
         }
         .task {
-            // Refresh silently on launch; failures surface in Settings.
             await model.importFromHealth()
             await model.sync()
         }

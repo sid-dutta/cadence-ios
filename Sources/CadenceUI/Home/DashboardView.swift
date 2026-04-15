@@ -1,8 +1,6 @@
 import SwiftUI
 import CadenceCore
 
-/// Modeled on the Health app's Summary tab: a large title, grouped cards, and
-/// small-caps section headers. Nothing here is custom-drawn.
 struct DashboardView: View {
     @Environment(AppModel.self) private var model
     @Binding var selectedTab: AppTab
@@ -45,8 +43,6 @@ struct DashboardView: View {
             }
         }
     }
-
-    // MARK: Sections
 
     private var resumeBanner: some View {
         Button(action: startWorkout) {
@@ -203,7 +199,6 @@ struct DashboardView: View {
     }
 }
 
-/// Health-style section header: uppercase caption, optional trailing action.
 struct SectionHeader<Trailing: View>: View {
     let title: String
     let trailing: Trailing
